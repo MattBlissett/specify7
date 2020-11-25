@@ -17,6 +17,9 @@ const WBStatus = require('./wbstatus.js');
 
 const template = require('./templates/wbview.html');
 
+const wb_upload_helper = require('./wb_upload/external_helper.js');
+const latlongutils = require('./latlongutils.js');
+
 const WBView = Backbone.View.extend({
     __name__: "WbForm",
     className: "wbs-form",
@@ -33,6 +36,7 @@ const WBView = Backbone.View.extend({
         'click .wb-search-button': 'searchCells',
         'click .wb-replace-button': 'replaceCells',
         'click .wb-show-toolbelt': 'toggleToolbelt',
+        'click .wb-geolocate': 'showGeoLocate',
     },
     initialize({wb, data, initialStatus}) {
         this.wb = wb;
@@ -65,6 +69,8 @@ const WBView = Backbone.View.extend({
         //initialize Handsontable
         const onChanged = this.spreadSheetChanged.bind(this);
 
+        this.colHeaders = colHeaders;
+        this.find_locality_columns();
         this.hot = new Handsontable(this.$('.wb-spreadsheet')[0], {
             height: this.calcHeight(),
             data: this.data,
@@ -562,6 +568,110 @@ const WBView = Backbone.View.extend({
         this.hot.setDataAtCell(changes);
 
     }
+    find_locality_columns(){
+        this.wb.rget('workbenchtemplate').done(wbtemplate => {
+
+            const upload_plan_string = wbtemplate.get('remarks');
+            const locality_columns = wb_upload_helper.find_locality_columns(upload_plan_string);
+
+            this.locality_columns = locality_columns.map(locality_mapping =>
+                Object.fromEntries(
+                    Object.entries(locality_mapping).map(([column_name,header_name])=>
+                        [column_name, this.colHeaders.indexOf(header_name)+1]
+                    )
+                )
+            );
+
+            //  disable the `GEOLocate` button if there aren't any localities mapped
+            if(this.locality_columns.length === 0)
+                Object.values(
+                    document.getElementsByClassName('.wb-geolocate')
+                ).map(geolocate_button =>
+                    geolocate_button.disabled = true
+                );
+        });
+    },
+    showGeoLocate: function(){
+
+        // const locality_points = [];
+        //
+        // for(const locality_mapping of this.locality_columns){
+        //
+        //     for(const row of this.data){
+        //
+        //         if(
+        //             column_indexes['latitude1'] === 0 ||
+        //             column_indexes['longitude1'] === 0 ||
+        //             row[column_indexes['latitude1']] === '' ||
+        //             row[column_indexes['longitude1']] === ''
+        //         )
+        //             continue;
+        //
+        //         let point_data = row[column_indexes['latitude1']] + '|' + row[column_indexes['longitude1']];
+        //
+        //         if(
+        //             typeof column_indexes['localityname'] !== "undefined" &&
+        //             column_indexes['localityname'] !== 0
+        //         )
+        //             point_data += '|' + column_indexes['localityname'] ;
+        //
+        //         locality_points.push(point_data);
+        //
+        //     }
+        //
+        // }
+        //
+        // const locality_points_string = locality_points.join(':');
+
+
+        const locality_points_string = this.locality_columns.reduce((locality_points, column_indexes)=>{
+
+            for(const row of this.data){
+
+                if(
+                    column_indexes['latitude1'] === 0 ||
+                    column_indexes['longitude1'] === 0 ||
+                    row[column_indexes['latitude1']] === '' ||
+                    row[column_indexes['longitude1']] === ''
+                )
+                    continue;
+
+                let point_data =
+                    latlongutils.parse(row[column_indexes['latitude1']]).toDegs()._components[0] +
+                    '|' +
+                    latlongutils.parse(row[column_indexes['longitude1']]).toDegs()._components[0];
+
+                if(
+                    typeof column_indexes['localityname'] !== "undefined" &&
+                    column_indexes['localityname'] !== 0
+                )
+                    point_data += '|' + column_indexes['localityname'];
+
+                locality_points.push(point_data);
+
+            }
+
+            return locality_points;
+
+        },[]).join(':');
+
+        $(`
+            <div>
+                <iframe
+                    style="
+                        width: 100%;
+                        height: 100%;
+                        border: none;"
+                    src="https://www.geo-locate.org/web/WebGeoreflight.aspx?v=1&w=900&h=400&points=${locality_points_string}"></iframe>
+            </div>`
+        ).dialog({
+            modal: true,
+            width: 900,
+            height: 400,
+            title: "GEOLocate",
+            close: function() { $(this).remove(); },
+        });
+    },
 });
 
 module.exports = function loadWorkbench(id) {

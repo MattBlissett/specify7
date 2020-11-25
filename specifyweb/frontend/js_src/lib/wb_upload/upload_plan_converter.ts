@@ -21,7 +21,10 @@ const upload_plan_converter = {
 	upload_plan_processing_functions: {
 		wbcols: ([key, value] :[key :string, value :string]) => [key, {
 			[
-				data_model['headers'].indexOf(value) !== -1 ?
+				(
+					typeof data_model['headers'] === "undefined" ||
+					data_model['headers'].indexOf(value) !== -1
+				) ?
 					'existing_header' :
 					'new_column'
 				]: value
