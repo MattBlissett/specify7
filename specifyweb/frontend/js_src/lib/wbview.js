@@ -578,7 +578,7 @@ const WBView = Backbone.View.extend({
 
         this.hot.setDataAtCell(changes);
 
-    }
+    },
     find_locality_columns(){
         this.wb.rget('workbenchtemplate').done(wbtemplate => {
 
