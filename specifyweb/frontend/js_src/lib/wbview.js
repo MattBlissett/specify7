@@ -736,7 +736,6 @@ const WBView = Backbone.View.extend({
                     src="https://www.geo-locate.org/web/WebGeoreflight.aspx?v=1&w=900&h=400&${query_string}"></iframe>
             </div>`
         ).dialog({
-            modal: true,
             width: 980,
             height: 700,
             resizable: false,
@@ -767,7 +766,6 @@ const WBView = Backbone.View.extend({
 
         $(`<div id="leaflet_map"></div>`
         ).dialog({
-            modal: true,
             width: 900,
             height: 600,
             title: "Leaflet map",
@@ -776,10 +774,15 @@ const WBView = Backbone.View.extend({
 
         const locality_points = this.locality_columns.reduce((locality_points, column_indexes)=>{
 
+            let i=0;
             for(const row of this.hot.getData()) {
                 const locality_coordinate = this.getLocalityCoordinate(row,column_indexes,true);
-                if(locality_coordinate)
-                    locality_points.push(locality_coordinate);
+
+                if(!locality_coordinate)
+                    continue;
+
+                locality_coordinate.row_number = i++;
+                locality_points.push(locality_coordinate);
             }
 
             return locality_points;
@@ -811,11 +814,11 @@ const WBView = Backbone.View.extend({
             const {
                 latitude1,
                 longitude1,
-                localityname='#'+index,
                 latitude2 = false,
                 longitude2 = false,
                 latlongtype = false,
-                latlongaccuracy = false
+                latlongaccuracy = false,
+                row_number,
             } = point_data_dict;
 
             let vectors = [];
@@ -858,9 +861,13 @@ const WBView = Backbone.View.extend({
                     create_a_point(latitude2, longitude2),
                 );
 
+
             vectors.map(vector=>{
                 vector.addTo(map);
-                vector.bindPopup(localityname);
+                vector.on('click',()=>{
+                    this.hot.selectCell(row_number,0);  // select first cell to scroll the view
+                    this.hot.selectRows(row_number);  // select an entire row
+                });
             });
 
             index++;
