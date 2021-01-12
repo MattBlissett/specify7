@@ -18,6 +18,7 @@ L.Control.FullScreen = L.Control.extend({
     onAdd: map => {
         const img = L.DomUtil.create('img');
         img.style.cursor = 'pointer';
+        img.classList.add('full_screen');
 
         L.DomEvent
             .on(img, 'click', L.DomEvent.stopPropagation)
@@ -31,10 +32,10 @@ L.Control.FullScreen = L.Control.extend({
     },
 
     onRemove: map => {
-        L.DomEvent
-            .off(img, 'click', L.DomEvent.stopPropagation)
-            .off(img, 'click', L.DomEvent.preventDefault)
-            .off(img, 'click', ()=>toggleFullScreen(map));
+        // L.DomEvent
+        //     .off(img, 'click', L.DomEvent.stopPropagation)
+        //     .off(img, 'click', L.DomEvent.preventDefault)
+        //     .off(img, 'click', ()=>toggleFullScreen(map));
     }
 });
 
@@ -359,7 +360,7 @@ const Leaflet = {
 
     },
 
-    showCOMap(list_of_layers_raw){
+    showCOMap(map_container, list_of_layers_raw){
 
         const list_of_layers = [
             ...co_map_tile_servers.map(({transparent, layer_label})=>
@@ -379,7 +380,7 @@ const Leaflet = {
         ];
 
         const format_layers_dict = (list_of_layers) => Object.fromEntries(
-            list_of_layers.map(({_, layer_label, tile_layer}) =>
+            list_of_layers.map(({layer_label, tile_layer}) =>
                 [layer_label, tile_layer]
             )
         );
@@ -387,7 +388,7 @@ const Leaflet = {
         const all_layers = Object.values(format_layers_dict(list_of_layers));
         const overlay_layers = format_layers_dict(list_of_layers.filter(({transparent}) => transparent));
 
-        const map = L.map('lifemapper_leaflet_map', {
+        const map = L.map(map_container, {
             layers: all_layers,
         }).setView([0, 0], 1);
 
