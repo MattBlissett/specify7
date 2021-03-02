@@ -383,18 +383,27 @@ module.exports = Backbone.View.extend({
 		if ($('#leaflet_map').length !== 0)
 			return;
 
+		const locality_points = Leaflet.getLocalitiesDataFromSpreadsheet(
+			this.locality_columns,
+			this.hot.getData()
+		);
+
 		Leaflet.showLeafletMap({
-			locality_points: Leaflet.getLocalitiesDataFromSpreadsheet(
-				this.locality_columns,
-				this.hot.getData()
-			),
-			marker_click_callback: (row_number) => {
+			locality_points,
+			marker_click_callback: (locality_point) => {
+
+				const row_number = locality_points[locality_point].row_number;
+
 				const selected_column =
 					typeof this.hot.getSelectedLast() === "undefined" ?
 						0 :
 						this.hot.getSelectedLast()[1];
-				this.hot.selectCell(row_number, selected_column);  // select the first cell to scroll the view
+
+				// select the first cell to scroll the view
+				this.hot.selectCell(row_number, selected_column);
+
 				this.hot.selectRows(row_number);  // select an entire row
+
 			}
 		});
 
