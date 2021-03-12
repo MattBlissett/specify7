@@ -265,7 +265,7 @@ export function validate(state: MappingState): MappingState {
       state.showMappingView ||
       Object.values(validationResults).length !== 0,
     mappingsAreValidated: Object.values(validationResults).length === 0,
-    validationResults: validationResults,
+    validationResults,
   };
 }
 
@@ -359,7 +359,7 @@ export function getLinesFromUploadPlan(
     const headerIndex = headers.indexOf(headerName);
     if (headerIndex !== -1)
       lines[headerIndex] = {
-        mappingPath: mappingPath,
+        mappingPath,
         type: mappingType,
         name: headerName,
         options
@@ -367,9 +367,9 @@ export function getLinesFromUploadPlan(
   });
 
   return {
-    baseTableName: baseTableName,
+    baseTableName,
     lines,
-    mustMatchPreferences: mustMatchPreferences,
+    mustMatchPreferences,
   };
 
 }
@@ -486,7 +486,7 @@ export const getAutomapperSuggestions = ({
       return resolve([]);
 
     const mappingLineData = getMappingLineData({
-      baseTableName: baseTableName,
+      baseTableName,
       mappingPath: mappingPathIsComplete(localMappingPath) ?
         localMappingPath :
         localMappingPath.slice(0, localMappingPath.length - 1),
@@ -521,7 +521,7 @@ export const getAutomapperSuggestions = ({
           baseTableName :
           mappingLineData[mappingLineData.length - 1].tableName,
         path: baseMappingPath,
-        pathOffset: pathOffset,
+        pathOffset,
         allowMultipleMappings: true,
         checkForExistingMappings: true,
         scope: 'suggestion',
@@ -543,7 +543,7 @@ export const getAutomapperSuggestions = ({
       {
         mappingPath: automapperResult,
         mappingLineData: getMappingLineData({
-          baseTableName: baseTableName,
+          baseTableName,
           mappingPath: automapperResult,
           customSelectType: 'SUGGESTION_LINE_LIST',
           getMappedFields: getMappedFields.bind(null, lines),
@@ -563,6 +563,8 @@ function MappingView(props: {
     index: number,
     newValue: string,
     isRelationship: boolean,
+    currentTable: string,
+    newTable: string,
   ) => void,
   readonly getMappedFields: GetMappedFieldsBind,
   readonly automapperSuggestions?: AutomapperSuggestion[],
@@ -611,15 +613,19 @@ function MappingView(props: {
 
 export function mutateMappingPath({
   lines,
-  mappingView: mappingView,
+  mappingView,
   line,
   index,
   value,
   isRelationship,
+  currentTableName,
+  newTableName
 }: Omit<ChangeSelectElementValueAction, 'type'> & {
   readonly lines: MappingLine[],
   readonly mappingView: MappingPath,
   readonly isRelationship: boolean,
+  readonly currentTableName: string,
+  readonly newTableName: string,
 }): MappingPath {
 
   let mappingPath = [...(
@@ -628,9 +634,10 @@ export function mutateMappingPath({
       lines[line].mappingPath
   )];
 
-  const isSimple =
+  const changeMappingPath =
     !valueIsReferenceItem(value) &&
-    !valueIsTreeRank(value);
+    !valueIsTreeRank(value) &&
+    currentTableName !== newTableName;
 
   if (value === 'add') {
     const mappedFields = Object.keys(
@@ -639,13 +646,13 @@ export function mutateMappingPath({
     const maxToManyValue = getMaxToManyValue(mappedFields);
     mappingPath[index] = formatReferenceItem(maxToManyValue + 1);
   }
-  else if (isSimple)
+  else if (changeMappingPath)
     mappingPath = [...mappingPath.slice(0, index), value];
   else
     mappingPath[index] = value;
 
   if ((
-    !isSimple || isRelationship
+    changeMappingPath || isRelationship
   ) && mappingPath.length - 1 === index)
     return [...mappingPath, '0'];
 
@@ -679,6 +686,8 @@ export default function WBPlanViewMapper(
       index: number,
       newValue: string,
       isRelationship: boolean,
+      currentTable: string,
+      newTable: string,
     ) => void,
     readonly handleClearMapping: (
       index: number,
@@ -932,7 +941,7 @@ export default function WBPlanViewMapper(
           lineData={
             getMappingLineData({
               baseTableName: props.baseTableName,
-              mappingPath: mappingPath,
+              mappingPath,
               generateLastRelationshipData: true,
               customSelectType: 'CLOSED_LIST',
               handleChange: props.handleChange.bind(null, index),
@@ -1031,12 +1040,12 @@ export default function WBPlanViewMapper(
                           )
                         }
                       />
-                      {' '}Use default value
+                      {' '}Use default value{options.default !== null && ':'}
                     </label>
                     {
                       typeof options.default === 'string' &&
-                      <label><br />
-                        Default value:<br />
+                      <>
+                        <br />
                         <StaticHeader
                           defaultValue={options.default || ''}
                           onChange={(event)=>
@@ -1046,7 +1055,7 @@ export default function WBPlanViewMapper(
                             )
                           }
                         />
-                      </label>
+                      </>
                     }
                   </>,
                   title: 'This value would be used in place of empty cells'
